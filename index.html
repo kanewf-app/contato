@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>kanefrugoli // SYSTEM READY</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+
+  :root {
+    --green: #00ff41;
+    --green-dim: #00aa2a;
+    --green-dark: #003d0f;
+    --red: #ff0044;
+    --blue: #0044ff;
+    --white: #e8ffe8;
+    --black: #000000;
+    --gray: #1a1a1a;
+    --border: rgba(0,255,65,0.18);
+    --glow: 0 0 8px rgba(0,255,65,0.5), 0 0 20px rgba(0,255,65,0.2);
+    --glow-strong: 0 0 12px rgba(0,255,65,0.8), 0 0 40px rgba(0,255,65,0.3), 0 0 80px rgba(0,255,65,0.1);
+  }
+
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 100%;
+    min-height: 100%;
+    background: #000;
+    color: var(--green);
+    font-family: 'Share Tech Mono', 'Courier New', monospace;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE GRAIN ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.35;
+  }
+
+  /* ── SCANLINES ── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,0.18) 3px,
+      rgba(0,0,0,0.18) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── FLICKER ── */
+  @keyframes flicker {
+    0%   { opacity: 1; }
+    92%  { opacity: 1; }
+    93%  { opacity: 0.85; }
+    94%  { opacity: 1; }
+    96%  { opacity: 0.9; }
+    97%  { opacity: 1; }
+    99%  { opacity: 0.92; }
+    100% { opacity: 1; }
+  }
+
+  .screen {
+    animation: flicker 6s infinite;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem 3rem;
+    position: relative;
+  }
+
+  /* ── CORNER DECORATIONS ── */
+  .corner {
+    position: fixed;
+    width: 28px;
+    height: 28px;
+    opacity: 0.5;
+    z-index: 10;
+  }
+  .corner-tl { top: 16px; left: 16px; border-top: 1px solid var(--green); border-left: 1px solid var(--green); }
+  .corner-tr { top: 16px; right: 16px; border-top: 1px solid var(--green); border-right: 1px solid var(--green); }
+  .corner-bl { bottom: 16px; left: 16px; border-bottom: 1px solid var(--green); border-left: 1px solid var(--green); }
+  .corner-br { bottom: 16px; right: 16px; border-bottom: 1px solid var(--green); border-right: 1px solid var(--green); }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    font-size: 9px;
+    color: rgba(0,255,65,0.35);
+    border-bottom: 1px solid rgba(0,255,65,0.08);
+    z-index: 100;
+    letter-spacing: 0.12em;
+  }
+
+  /* ── WRAPPER ── */
+  .wrapper {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* ── AVATAR / TERMINAL HEADER ── */
+  .terminal-header {
+    width: 100%;
+    border: 1px solid var(--border);
+    margin-bottom: 2rem;
+    opacity: 0;
+    animation: fadeSlideIn 0.6s ease forwards 0.2s;
+  }
+
+  .term-titlebar {
+    background: rgba(0,255,65,0.07);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    color: rgba(0,255,65,0.45);
+    letter-spacing: 0.1em;
+  }
+
+  .term-dots {
+    display: flex;
+    gap: 5px;
+  }
+
+  .term-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .dot-r { background: #ff5f56; box-shadow: 0 0 4px #ff5f56; }
+  .dot-y { background: #ffbd2e; box-shadow: 0 0 4px #ffbd2e; }
+  .dot-g { background: #27c93f; box-shadow: 0 0 4px #27c93f; }
+
+  .term-body {
+    padding: 20px 18px 18px;
+  }
+
+  /* ── GLITCH NAME ── */
+  .name-wrap {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+
+  .name-main {
+    font-family: 'VT323', 'Share Tech Mono', monospace;
+    font-size: clamp(2.6rem, 10vw, 3.8rem);
+    color: var(--green);
+    text-shadow: var(--glow-strong);
+    letter-spacing: 0.08em;
+    display: inline-block;
+    position: relative;
+  }
+
+  /* Glitch layers */
+  .name-main::before,
+  .name-main::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+  }
+
+  .name-main::before {
+    color: var(--red);
+    animation: glitch-r 4s infinite;
+    clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%);
+  }
+
+  .name-main::after {
+    color: var(--blue);
+    animation: glitch-b 4s infinite 0.05s;
+    clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%);
+  }
+
+  @keyframes glitch-r {
+    0%   { opacity: 0; transform: translateX(0); }
+    85%  { opacity: 0; transform: translateX(0); }
+    86%  { opacity: 1; transform: translateX(-3px); }
+    87%  { opacity: 1; transform: translateX(3px); }
+    88%  { opacity: 0; transform: translateX(0); }
+    90%  { opacity: 0; }
+    91%  { opacity: 1; transform: translateX(-2px); }
+    92%  { opacity: 0; transform: translateX(0); }
+    100% { opacity: 0; }
+  }
+
+  @keyframes glitch-b {
+    0%   { opacity: 0; transform: translateX(0); }
+    85%  { opacity: 0; transform: translateX(0); }
+    86%  { opacity: 1; transform: translateX(3px); }
+    87%  { opacity: 1; transform: translateX(-3px); }
+    88%  { opacity: 0; transform: translateX(0); }
+    90%  { opacity: 0; }
+    91%  { opacity: 1; transform: translateX(2px); }
+    92%  { opacity: 0; transform: translateX(0); }
+    100% { opacity: 0; }
+  }
+
+  /* Cursor */
+  .cursor {
+    display: inline-block;
+    width: 3px;
+    height: 1em;
+    background: var(--green);
+    margin-left: 4px;
+    vertical-align: middle;
+    box-shadow: var(--glow);
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+  }
+
+  /* ── TYPING EFFECT (JS-driven, placeholder hidden) ── */
+  #typed-name {
+    display: inline;
+  }
+
+  /* ── DESCRIPTION ── */
+  .description {
+    font-size: 0.78rem;
+    color: rgba(0,255,65,0.6);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    opacity: 0;
+    animation: fadeSlideIn 0.5s ease forwards 2.8s;
+  }
+
+  /* ── STATUS ── */
+  .status {
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    color: var(--green);
+    text-shadow: var(--glow);
+    opacity: 0;
+    animation: fadeSlideIn 0.5s ease forwards 3.1s;
+  }
+
+  .status-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: var(--glow);
+    margin-right: 6px;
+    animation: blink 1.2s ease-in-out infinite;
+    vertical-align: middle;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--green-dim), transparent);
+    margin: 1.6rem 0;
+    opacity: 0;
+    animation: fadeSlideIn 0.5s ease forwards 3.3s;
+  }
+
+  /* ── BUTTONS ── */
+  .links {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 20px;
+    border: 1px solid var(--border);
+    background: rgba(0,255,65,0.03);
+    color: var(--green);
+    text-decoration: none;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.88rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: background 0.25s, border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .btn:nth-child(1) { animation: fadeSlideIn 0.5s ease forwards 3.5s; }
+  .btn:nth-child(2) { animation: fadeSlideIn 0.5s ease forwards 3.7s; }
+  .btn:nth-child(3) { animation: fadeSlideIn 0.5s ease forwards 3.9s; }
+  .btn:nth-child(4) { animation: fadeSlideIn 0.5s ease forwards 4.1s; }
+
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(0,255,65,0.06) 50%, transparent 100%);
+    transform: translateX(-100%);
+    transition: transform 0.4s ease;
+  }
+
+  .btn:hover::before {
+    transform: translateX(100%);
+  }
+
+  .btn:hover {
+    background: rgba(0,255,65,0.07);
+    border-color: rgba(0,255,65,0.5);
+    box-shadow: var(--glow), inset 0 0 20px rgba(0,255,65,0.04);
+    transform: translateX(3px);
+  }
+
+  .btn:active {
+    transform: translateX(1px) scale(0.99);
+  }
+
+  .btn-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0,255,65,0.25);
+    padding: 4px;
+  }
+
+  .btn-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--green);
+    filter: drop-shadow(0 0 4px rgba(0,255,65,0.6));
+  }
+
+  .btn-label {
+    flex: 1;
+  }
+
+  .btn-prefix {
+    color: rgba(0,255,65,0.4);
+    margin-right: 6px;
+    font-size: 0.75rem;
+  }
+
+  .btn-arrow {
+    font-size: 1rem;
+    opacity: 0.4;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+
+  .btn:hover .btn-arrow {
+    opacity: 1;
+    transform: translateX(4px);
+  }
+
+  /* ── QR SECTION ── */
+  .qr-section {
+    margin-top: 2rem;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    animation: fadeSlideIn 0.5s ease forwards 4.2s;
+  }
+
+  .qr-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    color: rgba(0,255,65,0.4);
+    text-transform: uppercase;
+  }
+
+  .qr-frame {
+    border: 1px solid var(--border);
+    padding: 12px;
+    background: rgba(0,0,0,0.8);
+    position: relative;
+  }
+
+  .qr-frame::before,
+  .qr-frame::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+  }
+  .qr-frame::before { top: -1px; left: -1px; border-top: 2px solid var(--green); border-left: 2px solid var(--green); }
+  .qr-frame::after  { bottom: -1px; right: -1px; border-bottom: 2px solid var(--green); border-right: 2px solid var(--green); }
+
+  .qr-img-wrap {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .qr-img-wrap img {
+    width: 140px;
+    height: 140px;
+    image-rendering: pixelated;
+    filter: invert(1) sepia(1) saturate(3) hue-rotate(90deg);
+    display: block;
+  }
+
+  .qr-msg {
+    font-size: 0.65rem;
+    color: rgba(0,255,65,0.5);
+    text-align: center;
+    letter-spacing: 0.12em;
+    max-width: 220px;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    margin-top: 2.5rem;
+    font-size: 0.6rem;
+    color: rgba(0,255,65,0.2);
+    letter-spacing: 0.2em;
+    text-align: center;
+    opacity: 0;
+    animation: fadeSlideIn 0.5s ease forwards 4.5s;
+  }
+
+  /* ── KEYFRAMES ── */
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── BOOT OVERLAY ── */
+  #boot-overlay {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 9997;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    animation: bootFade 0.4s ease forwards 1.2s;
+  }
+
+  @keyframes bootFade {
+    to { opacity: 0; pointer-events: none; }
+  }
+
+  .boot-line {
+    font-size: 0.7rem;
+    color: rgba(0,255,65,0.5);
+    letter-spacing: 0.15em;
+    opacity: 0;
+  }
+
+  .boot-line:nth-child(1) { animation: fadeSlideIn 0.3s ease forwards 0.1s; }
+  .boot-line:nth-child(2) { animation: fadeSlideIn 0.3s ease forwards 0.3s; }
+  .boot-line:nth-child(3) { animation: fadeSlideIn 0.3s ease forwards 0.6s; }
+  .boot-line:nth-child(4) { animation: fadeSlideIn 0.3s ease forwards 0.9s; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 480px) {
+    .term-body { padding: 16px 14px; }
+    .btn { padding: 12px 16px; font-size: 0.82rem; }
+    .name-main { font-size: clamp(2.2rem, 12vw, 3rem); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Boot screen -->
+<div id="boot-overlay">
+  <div class="boot-line">BIOS v2.4.1 .......... OK</div>
+  <div class="boot-line">MEMORY CHECK ......... 16384MB OK</div>
+  <div class="boot-line">LOADING PROFILE ...... DONE</div>
+  <div class="boot-line">INITIALIZING ......... READY_</div>
+</div>
+
+<!-- Corner decorations -->
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<!-- Top bar -->
+<div class="topbar">
+  <span>SYS://PROFILE/KANEFRUGOLI</span>
+  <span id="clock">00:00:00</span>
+</div>
+
+<div class="screen">
+  <div class="wrapper">
+
+    <!-- Terminal window -->
+    <div class="terminal-header">
+      <div class="term-titlebar">
+        <div class="term-dots">
+          <div class="term-dot dot-r"></div>
+          <div class="term-dot dot-y"></div>
+          <div class="term-dot dot-g"></div>
+        </div>
+        <span>bash — kanefrugoli@node:~</span>
+      </div>
+      <div class="term-body">
+
+        <!-- Name with typing + glitch -->
+        <div class="name-wrap">
+          <span class="name-main" data-text="" id="glitch-name">
+            <span id="typed-name"></span><span class="cursor" id="cursor"></span>
+          </span>
+        </div>
+
+        <!-- Description -->
+        <div class="description">Profissional de TI&nbsp;&nbsp;|&nbsp;&nbsp;Suporte e Infraestrutura</div>
+
+        <!-- Status -->
+        <div class="status">
+          <span class="status-dot"></span>STATUS: SYSTEM READY_
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="divider"></div>
+
+    <!-- Links -->
+    <div class="links">
+
+      <!-- WhatsApp -->
+      <a class="btn" href="https://wa.me/5535998034569" target="_blank" rel="noopener">
+        <div class="btn-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+        </div>
+        <span class="btn-label"><span class="btn-prefix">></span>WhatsApp</span>
+        <span class="btn-arrow">›</span>
+      </a>
+
+      <!-- Instagram -->
+      <a class="btn" href="https://instagram.com/kanefrugoli" target="_blank" rel="noopener">
+        <div class="btn-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+          </svg>
+        </div>
+        <span class="btn-label"><span class="btn-prefix">></span>Instagram</span>
+        <span class="btn-arrow">›</span>
+      </a>
+
+      <!-- LinkedIn -->
+      <a class="btn" href="https://www.linkedin.com/in/kanefrugoli" target="_blank" rel="noopener">
+        <div class="btn-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+          </svg>
+        </div>
+        <span class="btn-label"><span class="btn-prefix">></span>LinkedIn</span>
+        <span class="btn-arrow">›</span>
+      </a>
+
+      <!-- E-mail -->
+      <a class="btn" href="mailto:kanewillian@msn.com">
+        <div class="btn-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+          </svg>
+        </div>
+        <span class="btn-label"><span class="btn-prefix">></span>Enviar E-mail</span>
+        <span class="btn-arrow">›</span>
+      </a>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      &copy; 2025 kanefrugoli &nbsp;|&nbsp; ENCRYPTED CONNECTION ACTIVE &nbsp;|&nbsp; v1.0.0
+    </div>
+
+  </div>
+</div>
+
+<script>
+  /* ── CLOCK ── */
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const s = String(now.getSeconds()).padStart(2,'0');
+    document.getElementById('clock').textContent = h + ':' + m + ':' + s;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  /* ── TYPING EFFECT (loop: type → blink 5x → clear → repeat) ── */
+  const fullName  = 'kanefrugoli';
+  const typedEl   = document.getElementById('typed-name');
+  const glitchEl  = document.getElementById('glitch-name');
+  const cursorEl  = document.getElementById('cursor');
+
+  function typeLetter(index, onDone) {
+    if (index < fullName.length) {
+      typedEl.textContent += fullName[index];
+      glitchEl.setAttribute('data-text', typedEl.textContent);
+      setTimeout(function() { typeLetter(index + 1, onDone); }, 95 + Math.random() * 65);
+    } else {
+      onDone();
+    }
+  }
+
+  function blinkCursor(times, onDone) {
+    if (times <= 0) { cursorEl.style.opacity = '1'; onDone(); return; }
+    cursorEl.style.opacity = '0';
+    setTimeout(function() {
+      cursorEl.style.opacity = '1';
+      setTimeout(function() { blinkCursor(times - 1, onDone); }, 320);
+    }, 320);
+  }
+
+  function runLoop() {
+    typedEl.textContent = '';
+    glitchEl.setAttribute('data-text', '');
+    cursorEl.style.opacity = '1';
+
+    typeLetter(0, function() {
+      // Typing done — blink cursor 5 times, then pause, then restart
+      setTimeout(function() {
+        blinkCursor(5, function() {
+          setTimeout(runLoop, 600);
+        });
+      }, 400);
+    });
+  }
+
+  // Start after boot overlay fades (1.6s)
+  setTimeout(runLoop, 1600);
+
+  /* ── RANDOM GLITCH FLICKER ON FULL PAGE ── */
+  function randomGlitch() {
+    const body = document.querySelector('.screen');
+    const delay = 4000 + Math.random() * 8000;
+    setTimeout(function() {
+      body.style.transform = 'translateX(' + (Math.random() * 4 - 2) + 'px)';
+      setTimeout(function() {
+        body.style.transform = 'translateX(0)';
+        setTimeout(function() {
+          body.style.transform = 'translateX(' + (Math.random() * 3 - 1.5) + 'px)';
+          setTimeout(function() {
+            body.style.transform = '';
+            randomGlitch();
+          }, 60);
+        }, 40);
+      }, 50);
+    }, delay);
+  }
+  randomGlitch();
+</script>
+</body>
+</html>
